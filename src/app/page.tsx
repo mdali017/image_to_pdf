@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Zap,
   Smartphone,
+  Camera,
   Sparkles,
   FileDown,
   RotateCw,
@@ -20,6 +21,7 @@ import { ImageItem, PdfSettings } from '@/types';
 import ImageCard from '@/components/ImageCard';
 import ImageEditorModal from '@/components/ImageEditorModal';
 import PdfSettingsBar from '@/components/PdfSettingsBar';
+import CameraCaptureModal from '@/components/CameraCaptureModal';
 import { generatePdf, downloadBlob } from '@/utils/pdfGenerator';
 
 export default function Home() {
@@ -44,6 +46,9 @@ export default function Home() {
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+
+  // Camera state
+  const [showCamera, setShowCamera] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +78,24 @@ export default function Home() {
     });
 
     setImages((prev) => [...prev, ...newItems]);
+  };
+
+  // Handle camera captured photo (dataURL)
+  const handleCameraCapture = (imageDataUrl: string, fileName: string) => {
+    const newItem: ImageItem = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: fileName,
+      size: 0,
+      originalUrl: imageDataUrl,
+      processedUrl: imageDataUrl,
+      width: 0,
+      height: 0,
+      rotation: 0,
+      brightness: 100,
+      contrast: 100,
+      filter: 'none',
+    };
+    setImages((prev) => [...prev, newItem]);
   };
 
   const handleDropFiles = (e: React.DragEvent) => {
@@ -258,13 +281,13 @@ export default function Home() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
               <FileImage className="w-5 h-5" />
             </div>
             <div>
               <h1 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-2">
                 Image to PDF
-                <span className="hidden sm:inline-block text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <span className="hidden sm:inline-block text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
                   Client-Side Pro
                 </span>
               </h1>
@@ -277,18 +300,26 @@ export default function Home() {
           {/* Quick Badges / Header CTA */}
           <div className="flex items-center gap-2 sm:gap-3">
             {images.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <FileImage className="w-3.5 h-3.5" />
                 {images.length} {images.length === 1 ? 'Page' : 'Pages'}
               </span>
             )}
 
             <button
+              onClick={() => setShowCamera(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-sm transition"
+            >
+              <Camera className="w-4 h-4" />
+              <span className="hidden sm:inline">Camera</span>
+            </button>
+
+            <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-sm transition"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-sm transition"
             >
               <Plus className="w-4 h-4" />
-              <span>{images.length === 0 ? 'Upload Images' : 'Add Photos'}</span>
+              <span>{images.length === 0 ? 'Upload' : 'Add Photos'}</span>
             </button>
           </div>
         </div>
@@ -304,9 +335,9 @@ export default function Home() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDropFiles}
               onClick={() => fileInputRef.current?.click()}
-              className="group relative border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-white hover:bg-indigo-50/20 rounded-3xl p-8 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-sm hover:shadow-lg flex flex-col items-center justify-center gap-4"
+              className="group relative border-2 border-dashed border-emerald-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/20 rounded-3xl p-8 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-sm hover:shadow-lg flex flex-col items-center justify-center gap-4"
             >
-              <div className="w-20 h-20 rounded-2xl bg-indigo-50 group-hover:scale-110 group-hover:bg-indigo-100/80 text-indigo-600 flex items-center justify-center transition-all duration-200 shadow-inner">
+              <div className="w-20 h-20 rounded-2xl bg-emerald-50 group-hover:scale-110 group-hover:bg-emerald-100/80 text-emerald-600 flex items-center justify-center transition-all duration-200 shadow-inner">
                 <UploadCloud className="w-10 h-10" />
               </div>
 
@@ -320,17 +351,31 @@ export default function Home() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                className="mt-2 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-bold rounded-xl shadow-md shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition"
-              >
-                <Plus className="w-4 h-4" />
-                Browse 30-40 Images
-              </button>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-500/25 group-hover:shadow-emerald-500/40 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  Browse Images
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCamera(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl shadow-md transition"
+                >
+                  <Camera className="w-4 h-4" />
+                  Use Camera
+                </button>
+              </div>
             </div>
 
             {/* Feature Highlights Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3">
                 <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
                   <ShieldCheck className="w-5 h-5" />
@@ -338,31 +383,43 @@ export default function Home() {
                 <div>
                   <h3 className="font-semibold text-sm text-slate-800">100% Private & Safe</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Images never leave your phone or laptop. All processing runs locally in browser.
+                    Images never leave your device. All processing runs locally in browser.
                   </p>
                 </div>
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+                <div className="p-2.5 rounded-xl bg-teal-50 text-teal-600">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm text-slate-800">Lightning Fast</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Zero upload waiting time. Convert 40 large camera photos into PDF in seconds.
+                    Zero upload wait. Convert 40 large camera photos into PDF in seconds.
                   </p>
                 </div>
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600">
+                <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-600">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-slate-800">Smart Camera</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Built-in camera with blur detection. Won&apos;t capture blurry photos!
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-green-50 text-green-600">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm text-slate-800">Phone & Laptop Ready</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Touch drag-and-drop reordering, interactive image crop & 90° rotation.
+                    Touch drag-and-drop reordering, interactive crop & 90° rotation.
                   </p>
                 </div>
               </div>
@@ -526,6 +583,13 @@ export default function Home() {
         }}
         onSave={handleSaveEditor}
         onNavigate={handleNavigateEditor}
+      />
+
+      {/* Camera Capture Modal */}
+      <CameraCaptureModal
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleCameraCapture}
       />
     </div>
   );
