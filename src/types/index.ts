@@ -27,3 +27,14 @@ export interface PdfSettings {
   fileName: string;
 }
 
+export interface PdfHistoryItem {
+  id: string;
+  fileName: string;
+  createdAt: number;
+  pageCount: number;
+  fileSize: number;
+  thumbnailUrl?: string;
+  pdfBlob: Blob;
+}
+
+

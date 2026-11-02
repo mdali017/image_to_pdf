@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   UploadCloud,
   FileImage,
@@ -11,18 +11,28 @@ import {
   Zap,
   Smartphone,
   Camera,
+  History,
   Sparkles,
   FileDown,
   RotateCw,
   Sliders,
   CheckCircle,
+  Eye,
 } from 'lucide-react';
-import { ImageItem, PdfSettings } from '@/types';
+import { ImageItem, PdfSettings, PdfHistoryItem } from '@/types';
 import ImageCard from '@/components/ImageCard';
 import ImageEditorModal from '@/components/ImageEditorModal';
 import PdfSettingsBar from '@/components/PdfSettingsBar';
 import CameraCaptureModal from '@/components/CameraCaptureModal';
+import PdfHistoryModal from '@/components/PdfHistoryModal';
+import PdfViewerModal from '@/components/PdfViewerModal';
 import { generatePdf, downloadBlob } from '@/utils/pdfGenerator';
+import {
+  savePdfToHistory,
+  getAllPdfHistory,
+  deletePdfFromHistory,
+  clearAllPdfHistory,
+} from '@/utils/historyDb';
 
 export default function Home() {
   const [images, setImages] = useState<ImageItem[]>([]);
@@ -49,6 +59,40 @@ export default function Home() {
 
   // Camera state
   const [showCamera, setShowCamera] = useState<boolean>(false);
+
+  // PDF History state
+  const [history, setHistory] = useState<PdfHistoryItem[]>([]);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [viewingPdfItem, setViewingPdfItem] = useState<PdfHistoryItem | null>(null);
+
+  // Load history from IndexedDB on component mount
+  useEffect(() => {
+    getAllPdfHistory()
+      .then((items) => setHistory(items))
+      .catch((err) => console.error('Failed to load PDF history:', err));
+  }, []);
+
+  const handleDeleteHistoryItem = async (id: string) => {
+    try {
+      await deletePdfFromHistory(id);
+      setHistory((prev) => prev.filter((item) => item.id !== id));
+      if (viewingPdfItem?.id === id) {
+        setViewingPdfItem(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete history item:', err);
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    try {
+      await clearAllPdfHistory();
+      setHistory([]);
+      setViewingPdfItem(null);
+    } catch (err) {
+      console.error('Failed to clear history:', err);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -253,6 +297,23 @@ export default function Home() {
       // Trigger direct download
       const filename = settings.fileName.trim() || 'document';
       downloadBlob(blob, filename);
+
+      // Automatically save to local history (IndexedDB)
+      try {
+        const historyItem: PdfHistoryItem = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          fileName: filename,
+          createdAt: Date.now(),
+          pageCount: images.length,
+          fileSize: blob.size,
+          thumbnailUrl: images[0]?.processedUrl || images[0]?.originalUrl,
+          pdfBlob: blob,
+        };
+        await savePdfToHistory(historyItem);
+        setHistory((prev) => [historyItem, ...prev]);
+      } catch (saveErr) {
+        console.warn('Could not save to history:', saveErr);
+      }
     } catch (err) {
       console.error('PDF Generation failed:', err);
       alert('Failed to generate PDF. Please check that images are valid.');
@@ -299,6 +360,21 @@ export default function Home() {
 
           {/* Quick Badges / Header CTA */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* History Button */}
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-semibold transition border border-slate-200/80"
+              title="View generated PDFs history"
+            >
+              <History className="w-4 h-4 text-emerald-600" />
+              <span className="hidden sm:inline">History</span>
+              {history.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">
+                  {history.length}
+                </span>
+              )}
+            </button>
+
             {images.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <FileImage className="w-3.5 h-3.5" />
@@ -549,15 +625,34 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               {generatedPdfBlob && (
-                <button
-                  onClick={() => {
-                    const filename = settings.fileName.trim() || 'document';
-                    downloadBlob(generatedPdfBlob, filename);
-                  }}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <FileDown className="w-4 h-4" /> Download Again
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      const filename = settings.fileName.trim() || 'document';
+                      setViewingPdfItem({
+                        id: 'current',
+                        fileName: filename,
+                        createdAt: Date.now(),
+                        pageCount: images.length,
+                        fileSize: generatedPdfBlob.size,
+                        pdfBlob: generatedPdfBlob,
+                      });
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" /> View PDF
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const filename = settings.fileName.trim() || 'document';
+                      downloadBlob(generatedPdfBlob, filename);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <FileDown className="w-4 h-4" /> Download Again
+                  </button>
+                </>
               )}
 
               <button
@@ -590,6 +685,24 @@ export default function Home() {
         isOpen={showCamera}
         onClose={() => setShowCamera(false)}
         onCapture={handleCameraCapture}
+      />
+
+      {/* PDF History Modal */}
+      <PdfHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        history={history}
+        onDelete={handleDeleteHistoryItem}
+        onClearAll={handleClearAllHistory}
+        onViewPdf={(item) => setViewingPdfItem(item)}
+      />
+
+      {/* PDF Viewer / Preview Modal */}
+      <PdfViewerModal
+        isOpen={viewingPdfItem !== null}
+        onClose={() => setViewingPdfItem(null)}
+        pdfBlob={viewingPdfItem?.pdfBlob || null}
+        fileName={viewingPdfItem?.fileName || 'document.pdf'}
       />
     </div>
   );
